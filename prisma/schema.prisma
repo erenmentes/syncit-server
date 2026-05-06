@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         Int         @id @default(autoincrement())
+  email      String      @unique
+  password   String
+  files      File[]      
+  sharedWith SharedFile[]
+}
+
+model File {
+  id        String   @id @default(uuid())
+  name      String
+  size      Int
+  createdAt DateTime @default(now())
+  localPath   String?
+
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+
+  chunks    FileChunk[]
+  
+  shares    SharedFile[]
+}
+
+model Chunk {
+  hash      String   @id
+  s3Path    String   @unique
+  size      Int
+  refCount  Int      @default(1)
+
+  files     FileChunk[]
+}
+
+model FileChunk {
+  file      File   @relation(fields: [fileId], references: [id])
+  fileId    String
+  chunk     Chunk  @relation(fields: [chunkHash], references: [hash])
+  chunkHash String
+  order     Int
+
+  @@id([fileId, chunkHash, order])
+}
+
+model SharedFile {
+  id           Int      @id @default(autoincrement())
+  file         File     @relation(fields: [fileId], references: [id])
+  fileId       String
+  sharedWith   User     @relation(fields: [userId], references: [id])
+  userId       Int
+  permission   String   // "READ" or "WRITE"
+}
