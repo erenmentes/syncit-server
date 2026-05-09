@@ -20,7 +20,7 @@ export class AuthService {
         const isUserExists = await this.userService.checkIfUserExists(signInDto.email)
 
         if (!isUserExists) {
-            throw new NotFoundException("User not found.")
+            throw new NotFoundException("Invalid credentials.")
         }
 
         const doesPasswordMatch = await this.userService.checkIfPasswordMatches(signInDto)
