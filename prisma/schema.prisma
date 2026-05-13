@@ -3,6 +3,13 @@
 
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
+enum UploadStatus {
+  PENDING
+  UPLOADING
+  COMPLETED
+  FAILED
+}
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,10 +19,10 @@ datasource db {
 }
 
 model User {
-  id         Int         @id @default(autoincrement())
-  email      String      @unique
+  id         Int          @id @default(autoincrement())
+  email      String       @unique
   password   String
-  files      File[]      
+  files      File[]
   sharedWith SharedFile[]
 }
 
@@ -24,23 +31,30 @@ model File {
   name      String
   size      Int
   createdAt DateTime @default(now())
-  localPath   String?
+  relativePath String?
+  lastUploadedChunk Int? // startIndex MUST equal lastUploadedChunk + 1
 
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  Int
+  clientLastModified BigInt
 
-  chunks    FileChunk[]
-  
-  shares    SharedFile[]
+  author   User @relation(fields: [authorId], references: [id])
+  authorId Int
+
+  status         UploadStatus @default(PENDING)
+  expiresAt      DateTime?
+  lastActivityAt DateTime @default(now())
+
+  chunks FileChunk[]
+
+  shares SharedFile[]
 }
 
 model Chunk {
-  hash      String   @id
-  s3Path    String   @unique
-  size      Int
-  refCount  Int      @default(1)
+  hash     String @id
+  s3Path   String @unique
+  size     Int
+  refCount Int    @default(1)
 
-  files     FileChunk[]
+  files FileChunk[]
 }
 
 model FileChunk {
@@ -48,16 +62,16 @@ model FileChunk {
   fileId    String
   chunk     Chunk  @relation(fields: [chunkHash], references: [hash])
   chunkHash String
-  order     Int
+  chunkIndex Int
 
-  @@id([fileId, chunkHash, order])
+  @@id([fileId, chunkHash])
 }
 
 model SharedFile {
-  id           Int      @id @default(autoincrement())
-  file         File     @relation(fields: [fileId], references: [id])
-  fileId       String
-  sharedWith   User     @relation(fields: [userId], references: [id])
-  userId       Int
-  permission   String   // "READ" or "WRITE"
+  id         Int    @id @default(autoincrement())
+  file       File   @relation(fields: [fileId], references: [id])
+  fileId     String
+  sharedWith User   @relation(fields: [userId], references: [id])
+  userId     Int
+  permission String // "READ" or "WRITE"
 }

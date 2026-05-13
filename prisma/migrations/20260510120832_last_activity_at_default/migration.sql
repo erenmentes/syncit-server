@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "File" ALTER COLUMN "lastActivityAt" SET DEFAULT CURRENT_TIMESTAMP;

@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "UploadStatus" AS ENUM ('PENDING', 'UPLOADING', 'COMPLETED', 'FAILED');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
@@ -13,8 +16,13 @@ CREATE TABLE "File" (
     "name" TEXT NOT NULL,
     "size" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "localPath" TEXT,
+    "relativePath" TEXT,
+    "lastUploadedChunk" INTEGER,
+    "clientLastModified" BIGINT NOT NULL,
     "authorId" INTEGER NOT NULL,
+    "status" "UploadStatus" NOT NULL DEFAULT 'PENDING',
+    "expiresAt" TIMESTAMP(3),
+    "lastActivityAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "File_pkey" PRIMARY KEY ("id")
 );
@@ -33,9 +41,9 @@ CREATE TABLE "Chunk" (
 CREATE TABLE "FileChunk" (
     "fileId" TEXT NOT NULL,
     "chunkHash" TEXT NOT NULL,
-    "order" INTEGER NOT NULL,
+    "chunkIndex" INTEGER NOT NULL,
 
-    CONSTRAINT "FileChunk_pkey" PRIMARY KEY ("fileId","chunkHash","order")
+    CONSTRAINT "FileChunk_pkey" PRIMARY KEY ("fileId","chunkHash")
 );
 
 -- CreateTable
