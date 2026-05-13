@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../guards/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileUploadDTO } from './dto/file-upload.dto';
 import { FilesService } from './files.service';
 import { GetUser } from '../decorators/user.decorator';
 import { FileUploadFinalizeDTO } from './dto/file-upload-finalize.dto';
+import { DownloadGuard } from '../guards/download.guard';
 
 @Controller('files')
 export class FilesController {
@@ -29,9 +30,9 @@ export class FilesController {
 
     }
 
-    @UseGuards(AuthGuard)
+    @UseGuards(AuthGuard,DownloadGuard)
     @Get('download')
-    async downloadFile() {
+    async downloadFile(@GetUser() userId, @Param('fileId') fileId : string) {
 
     }
 
