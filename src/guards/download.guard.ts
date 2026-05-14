@@ -6,7 +6,6 @@ import {
     NotFoundException,
     UnauthorizedException,
 } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { PrismaService } from "../prisma/prisma.service";
 

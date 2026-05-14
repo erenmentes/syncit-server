@@ -12,9 +12,78 @@ export class FilesService {
     constructor(private prismaService: PrismaService) { }
 
     async uploadFileInitialize(userId: any, fileUploadDto: FileUploadDTO): Promise<Record<string, Record<number, string>>> {
-        const fileCreated = await this.prismaService.file.create(
+
+        const isFileExists = await this.prismaService.file.findMany({ where: { id: fileUploadDto.fileId } })
+
+        if (isFileExists) {
+            const fileChunks = await this.prismaService.fileChunk.findMany({
+                where: {
+                    fileId: fileUploadDto.fileId
+                }
+            })
+
+            // i converted them into a Map<chunkIndex, chunkHash> for O(1) lookup.
+            const map = new Map()
+
+            for (const c of fileChunks) {
+                map.set(c.chunkIndex, c.chunkHash)
+            }
+
+            // TO-DO : will cover these actions in $transcation.
+            for (let i = 0; i < fileUploadDto.chunks.length; i++) {
+
+                const chunkIndex = fileUploadDto.chunks[i];
+                const newHash = fileUploadDto.chunkHashes[i];
+
+                const existingHash = map.get(chunkIndex);
+
+                if (existingHash === newHash) {
+                    continue; // nothing changed
+                }
+
+                // chunk does not exist or changed : upsert
+                await this.prismaService.chunk.upsert({
+                    where: {
+                        hash: newHash
+                    },
+                    update: {
+                        refCount: { increment: 1 }
+                    },
+                    create: {
+                        hash: newHash,
+                        size: fileUploadDto.chunkSizes[i],
+                        s3Path: `${fileUploadDto.fileId}/chunk-${chunkIndex}`
+                    }
+                })
+
+                await this.prismaService.fileChunk.upsert({
+                    where: {
+                        fileId_chunkIndex: {
+                            fileId: fileUploadDto.fileId,
+                            chunkIndex: chunkIndex
+                        }
+                    },
+                    update: {
+                        chunkHash: newHash
+                    },
+                    create: {
+                        fileId: fileUploadDto.fileId,
+                        chunkIndex: chunkIndex,
+                        chunkHash: newHash
+                    }
+                })
+            }
+        }
+
+
+        const fileCreated = await this.prismaService.file.upsert(
             {
-                data: {
+                where: {
+                    id: fileUploadDto.fileId
+                },
+                update: {},
+                create: {
+                    id: fileUploadDto.fileId,
                     name: fileUploadDto.fileName,
                     size: fileUploadDto.fileSize,
                     relativePath: fileUploadDto.fileRelativePath,
@@ -146,9 +215,9 @@ export class FilesService {
 
             await this.prismaService.fileChunk.upsert({
                 where: {
-                    fileId_chunkHash: {
+                    fileId_chunkIndex: {
                         fileId: fileUploadFinalizeDto.fileId,
-                        chunkHash: chunkHash
+                        chunkIndex: chunkIndex
                     }
                 },
                 update: {},
