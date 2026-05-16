@@ -13,9 +13,27 @@ export class FilesService {
 
     async uploadFileInitialize(userId: any, fileUploadDto: FileUploadDTO): Promise<Record<string, Record<number, string>>> {
 
-        const isFileExists = await this.prismaService.file.findMany({ where: { id: fileUploadDto.fileId } })
+        const isFileExists = await this.prismaService.file.findUnique({ where: { id: fileUploadDto.fileId } })
 
         if (isFileExists) {
+
+            // perm checks
+            const isAuthor = isFileExists.authorId === userId
+            if (!isAuthor) {
+                const sharedPermission = await this.prismaService.sharedFile.findFirst({
+                    where: {
+                        fileId: fileUploadDto.fileId,
+                        userId: userId,
+                        permission: 'WRITE'
+                    }
+                })
+
+                if (!sharedPermission) {
+                    throw new UnauthorizedException('You do not have permission to upload to this file.');
+                }
+            }
+
+
             const fileChunks = await this.prismaService.fileChunk.findMany({
                 where: {
                     fileId: fileUploadDto.fileId
